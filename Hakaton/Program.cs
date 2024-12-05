@@ -1,81 +1,103 @@
 ﻿using Hakaton;
+using System;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
-string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
-string[] imaginePaths = [];
-string logs = "";
-string logFile = "";
-string photo = "";
-if (Directory.Exists(rootPath))
+internal class Program
 {
-    string[] directoryEntries = Directory.GetDirectories(rootPath);
-    for (int i = 0; i < directoryEntries.Length; i++)
+    private static void Main(string[] args)
     {
-        imaginePaths.Append(Directory.GetFiles(directoryEntries[i], "*.jpg", SearchOption.AllDirectories)[0]);
-        string dateTimePattern = @"(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})";
+        string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
+        string[] imaginePaths = [];
+        string logs = "";
+        string logFile = "";
+        string photo = "";
+        string imaginePath = "";
 
-        Match match = Regex.Match(imaginePaths[0], dateTimePattern);
-
-        if (match.Success)
+        if (Directory.Exists(rootPath))
         {
-            int year = int.Parse(match.Groups[1].Value);
-            int month = int.Parse(match.Groups[2].Value);
-            int day = int.Parse(match.Groups[3].Value);
-            int hour = int.Parse(match.Groups[4].Value);
-            int minute = int.Parse(match.Groups[5].Value);
-            int second = int.Parse(match.Groups[6].Value);
-
-            DateTime dateTime = new DateTime(year, month, day, hour, minute, second);
-        }
-        logs = Directory.GetDirectories(rootPath)[0];
-        logFile = Directory.GetFiles(logs)[0];
-        var beacons = new List<DataEntry>();
-
-        if (File.Exists(logFile))
-        {
-            using (StreamReader reader = new StreamReader(logFile))
+            string[] directoryEntries = Directory.GetDirectories(rootPath);
+            for (int i = 0; i < directoryEntries.Length; i++)
             {
-                int lineNumber = 0;
-                bool skipFirstTwoLines = true;
+                DateTime dateTime = DateTime.Now;
+                imaginePath = Directory.GetFiles(directoryEntries[i], "*.jpg", SearchOption.AllDirectories)[0];
+                Console.WriteLine(imaginePath);
+                string dateTimePattern = @"(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})";
 
-                while (!reader.EndOfStream)
+                Match match = Regex.Match(imaginePath, dateTimePattern);
+
+                if (match.Success)
                 {
-                    string line = reader.ReadLine();
-                    lineNumber++;
+                    int year = int.Parse(match.Groups[1].Value);
+                    int month = int.Parse(match.Groups[2].Value);
+                    int day = int.Parse(match.Groups[3].Value);
+                    int hour = int.Parse(match.Groups[4].Value);
+                    int minute = int.Parse(match.Groups[5].Value);
+                    int second = int.Parse(match.Groups[6].Value);
 
-                    if (skipFirstTwoLines)
+                    dateTime = new DateTime(year, month, day, hour, minute, second);
+                }
+                Console.WriteLine("dt - " +dateTime);
+                logs = Directory.GetDirectories(directoryEntries[i])[0];
+                logFile = Directory.GetFiles(logs)[0];
+                var beacons = new List<Beacon>();
+
+                if (File.Exists(logFile))
+                {
+                    using (StreamReader reader = new StreamReader(logFile))
                     {
-                        if (lineNumber > 2)
+                        int lineNumber = 0;
+                        bool skipFirstTwoLines = true;
+
+                        while (!reader.EndOfStream)
                         {
-                            skipFirstTwoLines = false;
+                            string line = reader.ReadLine();
+                            lineNumber++;
+
+                            if (skipFirstTwoLines)
+                            {
+                                if (lineNumber > 2)
+                                {
+                                    skipFirstTwoLines = false;
+                                }
+                                continue;
+                            }
+                            if (line != "")
+                            {
+                                string[] fields = line.Split(',');
+                                long microS = long.Parse(fields[0]);
+                                Beacon data = new()
+                                {
+                                    Time = ConvertMicrosecondsToDateTime(microS),
+                                    EciQuatW = double.Parse(fields[1], CultureInfo.InvariantCulture),
+                                    EciQuatX = double.Parse(fields[2], CultureInfo.InvariantCulture),
+                                    EciQuatY = double.Parse(fields[3], CultureInfo.InvariantCulture),
+                                    EciQuatZ = double.Parse(fields[4], CultureInfo.InvariantCulture),
+                                    Latitude = double.Parse(fields[5], CultureInfo.InvariantCulture),
+                                    Longitude = double.Parse(fields[6], CultureInfo.InvariantCulture),
+                                    Altitude = double.Parse(fields[7], CultureInfo.InvariantCulture)
+                                };
+                                Console.WriteLine(data.Time);
+                                beacons.Add(data);
+                            }
                         }
-                        continue;
-                    }
-                    if (line != string.Empty)
-                    {
-                        string[] fields = line.Split(',');
-                        DataEntry data = new()
-                        {
-                            TimeUsec = Convert.ToInt32(fields[0]),
-                            EciQuatW = Convert.ToDouble(fields[1]),
-                            EciQuatX = Convert.ToDouble(fields[2]),
-                            EciQuatY = Convert.ToDouble(fields[3]),
-                            EciQuatZ = Convert.ToDouble(fields[4]),
-                            Latitude = Convert.ToDouble(fields[5]),
-                            Longitude = Convert.ToDouble(fields[6]),
-                            Altitude = Convert.ToDouble(fields[7])
-                        };
-                        beacons.Add(data);
                     }
                 }
+                else
+                {
+                    Console.WriteLine("Файл не найден.");
+                }
+                string kmlFilePath = @$"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
+                Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
+                KmlGenerator.WriteToKML(interpolatedBeacon, kmlFilePath);
             }
         }
-        else
+
+        static DateTime ConvertMicrosecondsToDateTime(long microseconds)
         {
-            Console.WriteLine("Файл не найден.");
+            DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            long ticks = microseconds * 10; 
+            return epoch.AddTicks(ticks);
         }
-        string kmlFilePath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls";
-        GenerateKmlFile(beacons, kmlFilePath);
     }
 }
-    

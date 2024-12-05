@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Hakaton
 {
-    class DataEntry
+    public class Beacon
     { 
-        public long TimeUsec { get; set; } // Время в микросекундах
+        public DateTime Time { get; set; } // Время в микросекундах
         public double EciQuatW { get; set; } // Кватернион ECI.w
         public double EciQuatX { get; set; } // Кватернион ECI.x
         public double EciQuatY { get; set; } // Кватернион ECI.y
