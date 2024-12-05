@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 internal class Program
 {
     private static readonly GeoContext _context = new();
-    private static void Main(string[] args)
+    private static async Task Main(string[] args)
     {
         
         string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
@@ -40,6 +40,7 @@ internal class Program
                     int second = int.Parse(match.Groups[6].Value);
 
                     dateTime = new DateTime(year, month, day, hour, minute, second);
+
                 }
                 logs = Directory.GetDirectories(directoryEntries[i])[0];
                 logFile = Directory.GetFiles(logs)[0];
@@ -70,7 +71,7 @@ internal class Program
                                 long microS = long.Parse(fields[0]);
                                 Beacon data = new()
                                 {
-                                    Time = ConvertMicrosecondsToDateTime(microS),
+                                    Time = Convert.ToDateTime(ConvertMicrosecondsToDateTime(microS)),
                                     EciQuatW = double.Parse(fields[1], CultureInfo.InvariantCulture),
                                     EciQuatX = double.Parse(fields[2], CultureInfo.InvariantCulture),
                                     EciQuatY = double.Parse(fields[3], CultureInfo.InvariantCulture),
@@ -97,7 +98,8 @@ internal class Program
                 byte[] image = File.ReadAllBytes(imaginePath);
                 GeoDatum geoDatum = new() { DateTime = interpolatedBeacon.Time, KmlData = kmlFilePath, ImageFile = image };
                 _context.GeoData.Add(geoDatum);
-                _context.SaveChanges();
+                Console.WriteLine(interpolatedBeacon.Time.ToString());
+                //await _context.SaveChangesAsync();
             }
         }
     }
