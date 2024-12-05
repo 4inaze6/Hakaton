@@ -98,6 +98,7 @@ internal class Program
         return epoch.AddTicks(ticks);
     }
 
+
     static (double lat, double lon, double alt)[] CalculateCorners(double latitude, double longitude, double altitude, double[] quat)
     {
         double horizontalFOV = 62.2 * Math.PI / 180;
