@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34928.147
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hakaton", "Hakaton\Hakaton.csproj", "{EA56F3D4-289E-48E6-9642-0E098A18D02F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EA56F3D4-289E-48E6-9642-0E098A18D02F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA56F3D4-289E-48E6-9642-0E098A18D02F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA56F3D4-289E-48E6-9642-0E098A18D02F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA56F3D4-289E-48E6-9642-0E098A18D02F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F7D9BCE6-221C-40E6-A1C1-AA3162C19A1D}
+	EndGlobalSection
+EndGlobal
