@@ -1,5 +1,4 @@
 ﻿using Hakaton;
-using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -13,6 +12,7 @@ internal class Program
         string logFile = "";
         string photo = "";
         string imaginePath = "";
+
 
         if (Directory.Exists(rootPath))
         {
@@ -45,7 +45,7 @@ internal class Program
                     {
                         int lineNumber = 0;
                         bool skipFirstTwoLines = true;
-
+                        Console.WriteLine(imaginePath);
                         while (!reader.EndOfStream)
                         {
                             string line = reader.ReadLine();
@@ -70,9 +70,9 @@ internal class Program
                                     EciQuatX = double.Parse(fields[2], CultureInfo.InvariantCulture),
                                     EciQuatY = double.Parse(fields[3], CultureInfo.InvariantCulture),
                                     EciQuatZ = double.Parse(fields[4], CultureInfo.InvariantCulture),
-                                    Latitude = double.Parse(fields[5], CultureInfo.InvariantCulture),
-                                    Longitude = double.Parse(fields[6], CultureInfo.InvariantCulture),
-                                    Altitude = double.Parse(fields[7], CultureInfo.InvariantCulture)
+                                    Latitude = double.Parse(fields[9], CultureInfo.InvariantCulture),
+                                    Longitude = double.Parse(fields[10], CultureInfo.InvariantCulture),
+                                    Altitude = double.Parse(fields[11], CultureInfo.InvariantCulture)
                                 };
                                 Console.WriteLine(data.Time);
                                 beacons.Add(data);
@@ -86,15 +86,74 @@ internal class Program
                 }
                 string kmlFilePath = @$"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
-                KmlGenerator.WriteToKML(interpolatedBeacon, kmlFilePath);
+                var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
+                KmlGenerator.WriteToKML(kmlFilePath, imaginePath, corners);
             }
         }
+    }
+    static DateTime ConvertMicrosecondsToDateTime(long microseconds)
+    {
+        DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        long ticks = microseconds * 10;
+        return epoch.AddTicks(ticks);
+    }
 
-        static DateTime ConvertMicrosecondsToDateTime(long microseconds)
+    static (double lat, double lon, double alt)[] CalculateCorners(double latitude, double longitude, double altitude, double[] quat)
+    {
+        double horizontalFOV = 62.2 * Math.PI / 180;
+        double verticalFOV = 48.8 * Math.PI / 180;
+
+        // Смещения в метрах
+        double[] offsets = new double[]
         {
-            DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            long ticks = microseconds * 10; 
-            return epoch.AddTicks(ticks);
+            Math.Tan(horizontalFOV / 2) * altitude, // Смещение по долготе
+            Math.Tan(verticalFOV / 2) * altitude    // Смещение по широте
+        };
+
+        var corners = new (double lat, double lon, double alt)[4];
+
+        var transformedOffsets = new (double x, double y, double z)[4];
+
+        transformedOffsets[0] = ApplyQuaternionToOffset(quat, offsets[0], offsets[1], altitude); // Угол 1 (вверх-вправо)
+        transformedOffsets[1] = ApplyQuaternionToOffset(quat, -offsets[0], offsets[1], altitude); // Угол 2 (вверх-влево)
+        transformedOffsets[2] = ApplyQuaternionToOffset(quat, -offsets[0], -offsets[1], altitude); // Угол 4 (вниз-влево)
+        transformedOffsets[3] = ApplyQuaternionToOffset(quat, offsets[0], -offsets[1], altitude); // Угол 3 (вниз-вправо)
+
+        // Расчет углов с учетом кватернионов
+        for (int i = 0; i < 4; i++)
+        {
+            corners[i] = (latitude + (transformedOffsets[i].y / 111320), longitude + (transformedOffsets[i].x / (111320 * Math.Cos(latitude * Math.PI / 180))), altitude);
         }
+
+        return corners;
+    }
+
+    static (double x, double y, double z) ApplyQuaternionToOffset(double[] quat, double offsetX, double offsetY, double offsetZ)
+    {
+        double[] vector = [0, offsetX, offsetY, offsetZ];
+
+        double qw = quat[0], qx = quat[1], qy = quat[2], qz = quat[3];
+
+        // q * v * q^-1
+        double[] qConjugate = [qw, -qx, -qy, -qz];
+
+        // q * v
+        double[] temp = QuaternionMultiply(quat, vector);
+
+        // (q * v) * q^-1
+        double[] result = QuaternionMultiply(temp, qConjugate);
+
+        return (result[1], result[2], result[3]); // Возврат x, y, z
+    }
+
+    static double[] QuaternionMultiply(double[] q1, double[] q2)
+    {
+        return new double[]
+        {
+        q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
+        q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
+        q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
+        q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
+        };
     }
 }

@@ -7,4 +7,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Corner.cs" />
+    <Compile Remove="Corners.cs" />
+  </ItemGroup>
+
 </Project>

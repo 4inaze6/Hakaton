@@ -11,7 +11,6 @@ namespace Hakaton
     {
         public static Beacon InterpolateBeacon(List<Beacon> beacons, DateTime targetTime)
         {
-            Console.WriteLine("wertuikjhgfrty3r3r3______________");
             beacons = beacons.OrderBy(b => b.Time).ToList();
 
             Beacon startBeacon = null;

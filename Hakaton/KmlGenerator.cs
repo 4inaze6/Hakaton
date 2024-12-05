@@ -1,11 +1,10 @@
 ﻿using System.Xml;
-using System.Xml.Linq;
 
 namespace Hakaton
 {
     public class KmlGenerator
     {
-        public static void WriteToKML(Beacon beacon, string filePath)
+        public static void WriteToKML(string fileName, string imagePath, (double lat, double lon, double alt)[] corners)
         {
             XmlDocument kmlDocument = new XmlDocument();
 
@@ -18,21 +17,57 @@ namespace Hakaton
             XmlElement documentElement = kmlDocument.CreateElement("Document");
             kmlElement.AppendChild(documentElement);
 
-            XmlElement placemarkElement = kmlDocument.CreateElement("Placemark");
-            documentElement.AppendChild(placemarkElement);
+            for (int i = 0; i < corners.Length; i++)
+            {
+                XmlElement placemark = kmlDocument.CreateElement("Placemark");
+                documentElement.AppendChild(placemark);
 
-            XmlElement nameElement = kmlDocument.CreateElement("name");
-            nameElement.InnerText = "Example Placemark";
-            placemarkElement.AppendChild(nameElement);
+                XmlElement name = kmlDocument.CreateElement("name");
+                name.InnerText = $"Угол {i + 1}";
+                placemark.AppendChild(name);
 
-            XmlElement pointElement = kmlDocument.CreateElement("Point");
-            placemarkElement.AppendChild(pointElement);
+                XmlElement description = kmlDocument.CreateElement("description");
+                description.InnerText = $"Угол снимка {i + 1}";
+                placemark.AppendChild(description);
 
-            XmlElement coordinatesElement = kmlDocument.CreateElement("coordinates");
-            coordinatesElement.InnerText = "-122.0838,37.4220,0";  
-            pointElement.AppendChild(coordinatesElement);
+                XmlElement point = kmlDocument.CreateElement("Point");
+                placemark.AppendChild(point);
 
-            kmlDocument.Save(filePath);
+                XmlElement coordinatesElement = kmlDocument.CreateElement("coordinates");
+                string lon = corners[i].lon.ToString().Replace(',', '.');
+                string lat = corners[i].lat.ToString().Replace(',', '.');
+                coordinatesElement.InnerText = $"{lon},{lat},0";
+                point.AppendChild(coordinatesElement);
+            }
+
+            XmlElement polygonPlacemark = kmlDocument.CreateElement("Placemark");
+            documentElement.AppendChild(polygonPlacemark);
+
+            XmlElement polygonName = kmlDocument.CreateElement("name");
+            polygonName.InnerText = "Область снимка";
+            polygonPlacemark.AppendChild(polygonName);
+
+            XmlElement polygon = kmlDocument.CreateElement("Polygon");
+            polygonPlacemark.AppendChild(polygon);
+
+            XmlElement outerBoundaryIs = kmlDocument.CreateElement("outerBoundaryIs");
+            polygon.AppendChild(outerBoundaryIs);
+
+            XmlElement linearRing = kmlDocument.CreateElement("LinearRing");
+            outerBoundaryIs.AppendChild(linearRing);
+
+            XmlElement polygonCoordinates = kmlDocument.CreateElement("coordinates");
+            string coords = "";
+            foreach (var corner in corners)
+            {
+                coords += $"{corner.lon.ToString().Replace(',', '.')},{corner.lat.ToString().Replace(',', '.')},0\n";
+            }
+            coords += $" {corners[0].lon.ToString().Replace(',', '.')},{corners[0].lat.ToString().Replace(',', '.')},0"; // Замыкание полигона
+            polygonCoordinates.InnerText = coords;
+            linearRing.AppendChild(polygonCoordinates);
+
+            kmlDocument.Save(fileName);
         }
     }
 }
+
