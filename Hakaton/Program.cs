@@ -1,11 +1,16 @@
 ﻿using Hakaton;
+using Hakaton.Data;
+using Hakaton.Models;
+using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
 internal class Program
 {
+    private static readonly GeoContext _context = new();
     private static void Main(string[] args)
     {
+        
         string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
         string[] imaginePaths = [];
         string logs = "";
@@ -76,6 +81,7 @@ internal class Program
                                 };
                                 Console.WriteLine(data.Time);
                                 beacons.Add(data);
+
                             }
                         }
                     }
@@ -88,6 +94,10 @@ internal class Program
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
                 var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, corners);
+                byte[] image = File.ReadAllBytes(imaginePath);
+                GeoDatum geoDatum = new() { DateTime = interpolatedBeacon.Time, KmlData = kmlFilePath, ImageFile = image };
+                _context.GeoData.Add(geoDatum);
+                _context.SaveChanges();
             }
         }
     }
