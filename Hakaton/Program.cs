@@ -21,7 +21,6 @@ internal class Program
             {
                 DateTime dateTime = DateTime.Now;
                 imaginePath = Directory.GetFiles(directoryEntries[i], "*.jpg", SearchOption.AllDirectories)[0];
-                Console.WriteLine(imaginePath);
                 string dateTimePattern = @"(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})";
 
                 Match match = Regex.Match(imaginePath, dateTimePattern);
@@ -37,11 +36,9 @@ internal class Program
 
                     dateTime = new DateTime(year, month, day, hour, minute, second);
                 }
-                Console.WriteLine("dt - " +dateTime);
                 logs = Directory.GetDirectories(directoryEntries[i])[0];
                 logFile = Directory.GetFiles(logs)[0];
                 var beacons = new List<Beacon>();
-
                 if (File.Exists(logFile))
                 {
                     using (StreamReader reader = new StreamReader(logFile))
