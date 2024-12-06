@@ -49,8 +49,8 @@ namespace Hakaton
             double interpolatedLon = Interpolating(startBeacon.Longitude, endBeacon.Longitude, t);
             double interpolatedAlt = Interpolating(startBeacon.Altitude, endBeacon.Altitude, t);
 
-            Quaternion quatStart = new Quaternion((float)startBeacon.EciQuatX, (float)startBeacon.EciQuatY, (float)startBeacon.EciQuatZ, (float)startBeacon.EciQuatW);
-            Quaternion quatEnd = new Quaternion((float)endBeacon.EciQuatX, (float)endBeacon.EciQuatY, (float)endBeacon.EciQuatZ, (float)endBeacon.EciQuatW);
+            Quaternion quatStart = new((float)startBeacon.EciQuatX, (float)startBeacon.EciQuatY, (float)startBeacon.EciQuatZ, (float)startBeacon.EciQuatW);
+            Quaternion quatEnd = new((float)endBeacon.EciQuatX, (float)endBeacon.EciQuatY, (float)endBeacon.EciQuatZ, (float)endBeacon.EciQuatW);
             Quaternion interpolatedQuat = Quaternion.Slerp(quatStart, quatEnd, (float)t);
 
             return new Beacon

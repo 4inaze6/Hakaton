@@ -1,21 +1,21 @@
 ﻿using Hakaton;
-using Hakaton.Data;
 using Hakaton.Models;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
 public class Program
 {
-    public static readonly GeoContext _context = new();
-    public static double EarthRadius = 6371000; // Радиус Земли (м)
-    double degToRad = Math.PI / 180.0;
-    double radToDeg = 180.0 / Math.PI;
+    const double EarthRadius = 6371000; // Радиус Земли (м)
+    const double degToRad = Math.PI / 180.0;
+    const double radToDeg = 180.0 / Math.PI;
     const double f = 1.0 / 298.257223563; // плоская эксцентриситет (WGS84)
     const double e2 = 2 * f - f * f; // эксцентриситет^2
     const double fovHorizontal = 62.2;  // Горизонтальное поле зрения в градусах
     const double fovVertical = 48.8;    // Вертикальное поле зрения в градусах
 
-    private static void Main(string[] args)
+    private static readonly GeoService _service = new();
+
+    private static async Task Main(string[] args)
     {
         string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
         string[] imaginePaths = [];
@@ -53,7 +53,7 @@ public class Program
                 var beacons = new List<Beacon>();
                 if (File.Exists(logFile))
                 {
-                    using (StreamReader reader = new StreamReader(logFile))
+                    using (StreamReader reader = new(logFile))
                     {
                         int lineNumber = 0;
                         bool skipFirstTwoLines = true;
@@ -97,11 +97,10 @@ public class Program
                 string kmlFilePath = @$"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
                 var geo = CalculateImageAreaFromBeacons(interpolatedBeacon);
-                //var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, geo[0], geo[1], geo[2], geo[3]);
-                GeoDatum geoDatum = new GeoDatum() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
-                //_context.Add(geoDatum);
-                //_context.SaveChanges();
+                GeoDatum geoDatum = new() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
+                if (await _service.SearchGeoData(geoDatum))
+                    await _service.AddGeoData(geoDatum);
             }
         }
     }
@@ -126,9 +125,10 @@ public class Program
 
         double tiltAngleDeg = GetTiltAngleDeg(centerLatitude, centerLongitude, centerAltitude, beacon.EciQuatW, beacon.EciQuatX, beacon.EciQuatY, beacon.EciQuatZ); // Угол наклона камеры в градусах
         Console.WriteLine(tiltAngleDeg);
+
         // Перевод углов в радианы
         double horizontalFovRad = DegreesToRadians(fovHorizontal);
-        double verticalFovRad = DegreesToRadians(fovHorizontal);
+        double verticalFovRad = DegreesToRadians(fovVertical);
         double tiltAngleRad = DegreesToRadians(tiltAngleDeg);
 
         // Вычисление эффективной высоты
@@ -160,8 +160,8 @@ public class Program
 
     public static double GetTiltAngleDeg(double latitude, double longitude, double altitude, double eciQuatW, double eciQuatX, double eciQuatY, double eciQuatZ)
     {
-        double phi = latitude * Math.PI / 180;   // Широта в радианах
-        double lambda = longitude * Math.PI / 180; // Долгота в радианах
+        double phi = latitude * Math.PI / 180;  
+        double lambda = longitude * Math.PI / 180;
         double satelliteHeight = EarthRadius + altitude;
 
         // Вектор направления на Землю (центр планеты)
@@ -171,7 +171,7 @@ public class Program
             satelliteHeight * Math.Sin(phi)
         };
 
-        // Вектор направления камеры в локальной системе координат спутника (обычно -Z)
+        // Вектор направления камеры в локальной системе координат спутника (взяли -Z)
         double[] cameraDirectionLocal = { 0, 0, -1 };
 
         // Преобразуем направление камеры в глобальную систему через кватернион
@@ -187,10 +187,8 @@ public class Program
     // Функция для поворота вектора через кватернион
     static double[] QuaternionRotate(double[] vector, double w, double x, double y, double z)
     {
-        // Кватернион вращения
         double[] quatVector = { 0, vector[0], vector[1], vector[2] };
 
-        // Обратный кватернион
         double norm = Math.Sqrt(w * w + x * x + y * y + z * z);
         double invW = w / norm;
         double invX = -x / norm;
@@ -203,7 +201,6 @@ public class Program
             new double[] { invW, invX, invY, invZ }
         );
 
-        // Возвращаем только векторную часть результата
         return new double[] { rotatedQuat[1], rotatedQuat[2], rotatedQuat[3] };
     }
 
