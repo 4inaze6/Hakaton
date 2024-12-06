@@ -96,9 +96,9 @@ public class Program
                 }
                 string kmlFilePath = @$"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
-                var corners = CalculateImageAreaFromBeacons(interpolatedBeacon);
+                var geo = CalculateImageAreaFromBeacons(interpolatedBeacon);
                 //var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
-                KmlGenerator.WriteToKML(kmlFilePath, imaginePath, corners);
+                KmlGenerator.WriteToKML(kmlFilePath, imaginePath, geo[0], geo[1], geo[2], geo[3]);
                 GeoDatum geoDatum = new GeoDatum() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
                 _context.Add(geoDatum);
                 _context.SaveChanges();
@@ -112,7 +112,7 @@ public class Program
         return epoch.AddTicks(ticks);
     }
 
-    public static (double lat, double lon, double alt)[] CalculateImageAreaFromBeacons(Beacon beacon)
+    public static double[] CalculateImageAreaFromBeacons(Beacon beacon)
     {
         // Константы
         double earthRadius = 6371000; // Радиус Земли (м)
@@ -148,14 +148,14 @@ public class Program
         double eastLongitude = centerLongitude + longitudeShift;
         double westLongitude = centerLongitude - longitudeShift;
 
-        var corners = new (double lat, double lon, double alt)[4];
+        var geoPos = new double[4];
 
-        corners[0] = (westLongitude, northLatitude, 0);
-        corners[1] = (eastLongitude, northLatitude, 0);
-        corners[2] = (eastLongitude, southLatitude, 0);
-        corners[3] = (westLongitude, southLatitude, 0);
+        geoPos[0] = northLatitude;
+        geoPos[1] = southLatitude;
+        geoPos[2] = eastLongitude;
+        geoPos[3] = westLongitude;
 
-        return corners;
+        return geoPos;
     }
 
     // Метод для перевода градусов в радианы

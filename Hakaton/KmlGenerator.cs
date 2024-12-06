@@ -4,102 +4,63 @@ namespace Hakaton
 {
     public class KmlGenerator
     {
-        public static void WriteToKML(string fileName, string imagePath, (double lat, double lon, double alt)[] corners)
+        public static void WriteToKML(string fileName, string imagePath, double northLat, double southLat, double eastLon, double westLon)
         {
-            XmlDocument kmlDocument = new XmlDocument();
+            XmlDocument xmlDoc = new XmlDocument();
 
-            XmlDeclaration declaration = kmlDocument.CreateXmlDeclaration("1.0", "UTF-8", null);
-            kmlDocument.AppendChild(declaration);
+            XmlElement kmlElement = xmlDoc.CreateElement("kml");
+            kmlElement.SetAttribute("xmlns", "http://www.opengis.net/kml/2.2");
+            xmlDoc.AppendChild(kmlElement);
 
-            XmlElement kmlElement = kmlDocument.CreateElement("kml", "http://www.opengis.net/kml/2.2");
-            kmlDocument.AppendChild(kmlElement);
-
-            XmlElement documentElement = kmlDocument.CreateElement("Document");
+            XmlElement documentElement = xmlDoc.CreateElement("Document");
             kmlElement.AppendChild(documentElement);
 
-            for (int i = 0; i < corners.Length; i++)
-            {
-                XmlElement placemark = kmlDocument.CreateElement("Placemark");
-                documentElement.AppendChild(placemark);
+            XmlElement styleElement = xmlDoc.CreateElement("Style");
+            styleElement.SetAttribute("id", "polygonStyle");
+            documentElement.AppendChild(styleElement);
 
-                XmlElement name = kmlDocument.CreateElement("name");
-                name.InnerText = $"Угол {i + 1}";
-                placemark.AppendChild(name);
+            XmlElement iconStyleElement = xmlDoc.CreateElement("IconStyle");
+            styleElement.AppendChild(iconStyleElement);
 
-                XmlElement description = kmlDocument.CreateElement("description");
-                description.InnerText = $"Угол снимка {i + 1}";
-                placemark.AppendChild(description);
+            XmlElement iconElement = xmlDoc.CreateElement("Icon");
+            iconStyleElement.AppendChild(iconElement);
+            XmlElement hrefElement = xmlDoc.CreateElement("href");
 
-                XmlElement point = kmlDocument.CreateElement("Point");
-                placemark.AppendChild(point);
+            hrefElement.InnerText = $"{Path.GetDirectoryName(imagePath)}\\{Path.GetFileNameWithoutExtension(imagePath)}.jpg";  
+            iconElement.AppendChild(hrefElement);
 
-                XmlElement coordinatesElement = kmlDocument.CreateElement("coordinates");
-                string lon = corners[i].lon.ToString().Replace(',', '.');
-                string lat = corners[i].lat.ToString().Replace(',', '.');
-                coordinatesElement.InnerText = $"{lon},{lat},0";
-                point.AppendChild(coordinatesElement);
-            }
+            XmlElement placemarkElement = xmlDoc.CreateElement("Placemark");
+            documentElement.AppendChild(placemarkElement);
 
-            XmlElement polygonPlacemark = kmlDocument.CreateElement("Placemark");
-            documentElement.AppendChild(polygonPlacemark);
+            XmlElement styleUrlElement = xmlDoc.CreateElement("styleUrl");
+            styleUrlElement.InnerText = "#polygonStyle";
+            placemarkElement.AppendChild(styleUrlElement);
 
-            XmlElement polygonName = kmlDocument.CreateElement("name");
-            polygonName.InnerText = "Область снимка";
-            polygonPlacemark.AppendChild(polygonName);
+            XmlElement descriptionElement = xmlDoc.CreateElement("description");
+            descriptionElement.InnerText = "Скорректированная область видимости";
+            placemarkElement.AppendChild(descriptionElement);
 
-            XmlElement polygon = kmlDocument.CreateElement("Polygon");
-            polygonPlacemark.AppendChild(polygon);
+            XmlElement polygonElement = xmlDoc.CreateElement("Polygon");
+            placemarkElement.AppendChild(polygonElement);
 
-            XmlElement outerBoundaryIs = kmlDocument.CreateElement("outerBoundaryIs");
-            polygon.AppendChild(outerBoundaryIs);
+            XmlElement outerBoundaryIsElement = xmlDoc.CreateElement("outerBoundaryIs");
+            polygonElement.AppendChild(outerBoundaryIsElement);
 
-            XmlElement linearRing = kmlDocument.CreateElement("LinearRing");
-            outerBoundaryIs.AppendChild(linearRing);
+            XmlElement linearRingElement = xmlDoc.CreateElement("LinearRing");
+            outerBoundaryIsElement.AppendChild(linearRingElement);
 
-            XmlElement polygonCoordinates = kmlDocument.CreateElement("coordinates");
-            string coords = "";
-            foreach (var corner in corners)
-            {
-                coords += $"{corner.lon.ToString().Replace(',', '.')},{corner.lat.ToString().Replace(',', '.')},0\n";
-            }
-            coords += $" {corners[0].lon.ToString().Replace(',', '.')},{corners[0].lat.ToString().Replace(',', '.')},0"; // Замыкание полигона
-            polygonCoordinates.InnerText = coords;
-            linearRing.AppendChild(polygonCoordinates);
-            // Добавление наложения изображения
-            XmlElement groundOverlay = kmlDocument.CreateElement("GroundOverlay");
-            documentElement.AppendChild(groundOverlay);
+            // Создаем элемент coordinates
+            XmlElement coordinatesElement = xmlDoc.CreateElement("coordinates");
+            linearRingElement.AppendChild(coordinatesElement);
 
-            XmlElement overlayName = kmlDocument.CreateElement("name");
-            overlayName.InnerText = "Изображение наложения";
-            groundOverlay.AppendChild(overlayName);
-
-            XmlElement icon = kmlDocument.CreateElement("Icon");
-            groundOverlay.AppendChild(icon);
-
-            XmlElement href = kmlDocument.CreateElement("href");
-            href.InnerText = imagePath; // Путь к локальному изображению
-            icon.AppendChild(href);
-
-            XmlElement latLonBox = kmlDocument.CreateElement("LatLonBox");
-            groundOverlay.AppendChild(latLonBox);
-
-            // Указываем границы наложения изображения
-            XmlElement north = kmlDocument.CreateElement("north");
-            north.InnerText = corners[0].lat.ToString().Replace(',', '.'); // Максимальная широта (север)
-            latLonBox.AppendChild(north);
-
-            XmlElement south = kmlDocument.CreateElement("south");
-            south.InnerText = corners[2].lat.ToString().Replace(',', '.'); // Минимальная широта (юг)
-            latLonBox.AppendChild(south);
-
-            XmlElement east = kmlDocument.CreateElement("east");
-            east.InnerText = corners[1].lon.ToString().Replace(',', '.'); // Максимальная долгота (восток)
-            latLonBox.AppendChild(east);
-
-            XmlElement west = kmlDocument.CreateElement("west");
-            west.InnerText = corners[3].lon.ToString().Replace(',', '.'); // Минимальная долгота (запад)
-            latLonBox.AppendChild(west);
-            kmlDocument.Save(fileName);
+            string coordinatesText = $"{westLon.ToString().Replace(',', '.')},{northLat.ToString().Replace(',', '.')},0 " +
+                                     $"{eastLon.ToString().Replace(',', '.')},{northLat.ToString().Replace(',', '.')},0 " +
+                                     $"{eastLon.ToString().Replace(',', '.')},{southLat.ToString().Replace(',', '.')},0 " +
+                                     $"{westLon.ToString().Replace(',', '.')},{southLat.ToString().Replace(',', '.')},0 " +
+                                     $"{westLon.ToString().Replace(',', '.')},{northLat.ToString().Replace(',', '.')},0";
+            coordinatesElement.InnerText = coordinatesText;
+            xmlDoc.Save(fileName);
+            Console.WriteLine($"KML файл сохранен по пути: {fileName}");
         }
     }
 }
