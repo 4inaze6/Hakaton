@@ -65,7 +65,40 @@ namespace Hakaton
             coords += $" {corners[0].lon.ToString().Replace(',', '.')},{corners[0].lat.ToString().Replace(',', '.')},0"; // Замыкание полигона
             polygonCoordinates.InnerText = coords;
             linearRing.AppendChild(polygonCoordinates);
+            // Добавление наложения изображения
+            XmlElement groundOverlay = kmlDocument.CreateElement("GroundOverlay");
+            documentElement.AppendChild(groundOverlay);
 
+            XmlElement overlayName = kmlDocument.CreateElement("name");
+            overlayName.InnerText = "Изображение наложения";
+            groundOverlay.AppendChild(overlayName);
+
+            XmlElement icon = kmlDocument.CreateElement("Icon");
+            groundOverlay.AppendChild(icon);
+
+            XmlElement href = kmlDocument.CreateElement("href");
+            href.InnerText = imagePath; // Путь к локальному изображению
+            icon.AppendChild(href);
+
+            XmlElement latLonBox = kmlDocument.CreateElement("LatLonBox");
+            groundOverlay.AppendChild(latLonBox);
+
+            // Указываем границы наложения изображения
+            XmlElement north = kmlDocument.CreateElement("north");
+            north.InnerText = corners[0].lat.ToString().Replace(',', '.'); // Максимальная широта (север)
+            latLonBox.AppendChild(north);
+
+            XmlElement south = kmlDocument.CreateElement("south");
+            south.InnerText = corners[2].lat.ToString().Replace(',', '.'); // Минимальная широта (юг)
+            latLonBox.AppendChild(south);
+
+            XmlElement east = kmlDocument.CreateElement("east");
+            east.InnerText = corners[1].lon.ToString().Replace(',', '.'); // Максимальная долгота (восток)
+            latLonBox.AppendChild(east);
+
+            XmlElement west = kmlDocument.CreateElement("west");
+            west.InnerText = corners[3].lon.ToString().Replace(',', '.'); // Минимальная долгота (запад)
+            latLonBox.AppendChild(west);
             kmlDocument.Save(fileName);
         }
     }

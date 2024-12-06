@@ -1,16 +1,20 @@
 ﻿using Hakaton;
 using Hakaton.Data;
 using Hakaton.Models;
-using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-internal class Program
+public class Program
 {
-    private static readonly GeoContext _context = new();
-    private static async Task Main(string[] args)
+    public static readonly GeoContext _context = new();
+    const double a = 6378137.0; // радиус Земли (метры)
+    const double f = 1.0 / 298.257223563; // плоская эксцентриситет (WGS84)
+    const double e2 = 2 * f - f * f; // эксцентриситет^2
+    const double fovHorizontal = 62.2;  // Горизонтальное поле зрения в градусах
+    const double fovVertical = 48.8;    // Вертикальное поле зрения в градусах
+
+    private static void Main(string[] args)
     {
-        
         string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
         string[] imaginePaths = [];
         string logs = "";
@@ -51,7 +55,6 @@ internal class Program
                     {
                         int lineNumber = 0;
                         bool skipFirstTwoLines = true;
-                        Console.WriteLine(imaginePath);
                         while (!reader.EndOfStream)
                         {
                             string line = reader.ReadLine();
@@ -59,7 +62,7 @@ internal class Program
 
                             if (skipFirstTwoLines)
                             {
-                                if (lineNumber > 2)
+                                if (lineNumber > 0)
                                 {
                                     skipFirstTwoLines = false;
                                 }
@@ -80,9 +83,7 @@ internal class Program
                                     Longitude = double.Parse(fields[10], CultureInfo.InvariantCulture),
                                     Altitude = double.Parse(fields[11], CultureInfo.InvariantCulture)
                                 };
-                                Console.WriteLine(data.Time);
                                 beacons.Add(data);
-
                             }
                         }
                     }
@@ -95,11 +96,9 @@ internal class Program
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
                 var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, corners);
-                byte[] image = File.ReadAllBytes(imaginePath);
-                GeoDatum geoDatum = new() { DateTime = interpolatedBeacon.Time, KmlData = kmlFilePath, ImageFile = image };
-                _context.GeoData.Add(geoDatum);
-                Console.WriteLine(interpolatedBeacon.Time.ToString());
-                //await _context.SaveChangesAsync();
+                GeoDatum geoDatum = new GeoDatum() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath};
+                _context.Add(geoDatum);
+                _context.SaveChanges();
             }
         }
     }
@@ -163,10 +162,10 @@ internal class Program
     {
         return new double[]
         {
-        q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
-        q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
-        q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
-        q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
+            q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
+            q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
+            q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
+            q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
         };
     }
 }

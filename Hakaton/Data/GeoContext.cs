@@ -29,7 +29,6 @@ public partial class GeoContext : DbContext
             entity.HasKey(e => e.ImageId);
 
             entity.Property(e => e.DateTime).HasColumnType("datetime");
-            entity.Property(e => e.ImageFile).HasColumnType("image");
         });
 
         OnModelCreatingPartial(modelBuilder);

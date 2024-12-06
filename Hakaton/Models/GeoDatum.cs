@@ -9,7 +9,7 @@ public partial class GeoDatum
 
     public DateTime DateTime { get; set; }
 
-    public byte[] ImageFile { get; set; } = null!;
-
     public string KmlData { get; set; } = null!;
+
+    public string ImagePath { get; set; } = null!;
 }

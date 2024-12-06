@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Numerics;
 
 namespace Hakaton
 {
@@ -20,7 +15,6 @@ namespace Hakaton
             {
                 if (targetTime >= beacons[i].Time && targetTime <= beacons[i + 1].Time)
                 {
-                    Console.WriteLine("Yes");
                     startBeacon = beacons[i];
                     endBeacon = beacons[i + 1];
                     break;
@@ -46,10 +40,10 @@ namespace Hakaton
 
             double t = timeDiff / totalTime;
 
-            return InterpolateBeacon(startBeacon, endBeacon, t);
+            return InterpolateBeacon(startBeacon, endBeacon, t, targetTime);
         }
 
-        static Beacon InterpolateBeacon(Beacon startBeacon, Beacon endBeacon, double t)
+        static Beacon InterpolateBeacon(Beacon startBeacon, Beacon endBeacon, double t, DateTime targetTime)
         {
             double interpolatedLat = Interpolating(startBeacon.Latitude, endBeacon.Latitude, t);
             double interpolatedLon = Interpolating(startBeacon.Longitude, endBeacon.Longitude, t);
@@ -61,6 +55,7 @@ namespace Hakaton
 
             return new Beacon
             {
+                Time = targetTime,
                 Latitude = interpolatedLat,
                 Longitude = interpolatedLon,
                 Altitude = interpolatedAlt,
