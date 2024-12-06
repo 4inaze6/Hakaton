@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 public class Program
 {
     public static readonly GeoContext _context = new();
-    double earthRadius = 6371000; // Радиус Земли (м)
+    public static double EarthRadius = 6371000; // Радиус Земли (м)
     double degToRad = Math.PI / 180.0;
     double radToDeg = 180.0 / Math.PI;
     const double f = 1.0 / 298.257223563; // плоская эксцентриситет (WGS84)
@@ -100,8 +100,8 @@ public class Program
                 //var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, geo[0], geo[1], geo[2], geo[3]);
                 GeoDatum geoDatum = new GeoDatum() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
-                _context.Add(geoDatum);
-                _context.SaveChanges();
+                //_context.Add(geoDatum);
+                //_context.SaveChanges();
             }
         }
     }
@@ -124,8 +124,8 @@ public class Program
         double centerLongitude = beacon.Longitude;
         double centerAltitude = beacon.Altitude;
 
-        double tiltAngleDeg = 30; // Угол наклона камеры в градусах
-
+        double tiltAngleDeg = GetTiltAngleDeg(centerLatitude, centerLongitude, centerAltitude, beacon.EciQuatW, beacon.EciQuatX, beacon.EciQuatY, beacon.EciQuatZ); // Угол наклона камеры в градусах
+        Console.WriteLine(tiltAngleDeg);
         // Перевод углов в радианы
         double horizontalFovRad = DegreesToRadians(fovHorizontal);
         double verticalFovRad = DegreesToRadians(fovHorizontal);
@@ -158,76 +158,79 @@ public class Program
         return geoPos;
     }
 
+    public static double GetTiltAngleDeg(double latitude, double longitude, double altitude, double eciQuatW, double eciQuatX, double eciQuatY, double eciQuatZ)
+    {
+        double phi = latitude * Math.PI / 180;   // Широта в радианах
+        double lambda = longitude * Math.PI / 180; // Долгота в радианах
+        double satelliteHeight = EarthRadius + altitude;
+
+        // Вектор направления на Землю (центр планеты)
+        double[] directionToEarth = {
+            satelliteHeight * Math.Cos(phi) * Math.Cos(lambda),
+            satelliteHeight * Math.Cos(phi) * Math.Sin(lambda),
+            satelliteHeight * Math.Sin(phi)
+        };
+
+        // Вектор направления камеры в локальной системе координат спутника (обычно -Z)
+        double[] cameraDirectionLocal = { 0, 0, -1 };
+
+        // Преобразуем направление камеры в глобальную систему через кватернион
+        double[] cameraDirectionGlobal = QuaternionRotate(cameraDirectionLocal, eciQuatW, eciQuatX, eciQuatY, eciQuatZ);
+
+        // Угол между векторами
+        double angleRad = AngleBetweenVectors(cameraDirectionGlobal, directionToEarth);
+        double angleDeg = angleRad * 180 / Math.PI;
+
+        return angleDeg;
+    }
+
+    // Функция для поворота вектора через кватернион
+    static double[] QuaternionRotate(double[] vector, double w, double x, double y, double z)
+    {
+        // Кватернион вращения
+        double[] quatVector = { 0, vector[0], vector[1], vector[2] };
+
+        // Обратный кватернион
+        double norm = Math.Sqrt(w * w + x * x + y * y + z * z);
+        double invW = w / norm;
+        double invX = -x / norm;
+        double invY = -y / norm;
+        double invZ = -z / norm;
+
+        // Умножение кватернионов: RotatedVector = Rotation * Vector * Rotation^-1
+        double[] rotatedQuat = QuaternionMultiply(
+            QuaternionMultiply(new double[] { w, x, y, z }, quatVector),
+            new double[] { invW, invX, invY, invZ }
+        );
+
+        // Возвращаем только векторную часть результата
+        return new double[] { rotatedQuat[1], rotatedQuat[2], rotatedQuat[3] };
+    }
+
+    // Функция для умножения двух кватернионов
+    static double[] QuaternionMultiply(double[] q1, double[] q2)
+    {
+        return new double[]
+        {
+            q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
+            q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
+            q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
+            q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
+        };
+    }
+
+    // Функция для вычисления угла между двумя векторами
+    static double AngleBetweenVectors(double[] v1, double[] v2)
+    {
+        double dotProduct = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+        double magnitudeV1 = Math.Sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
+        double magnitudeV2 = Math.Sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
+        return Math.Acos(dotProduct / (magnitudeV1 * magnitudeV2));
+    }
+
     // Метод для перевода градусов в радианы
     private static double DegreesToRadians(double degrees)
     {
         return degrees * Math.PI / 180;
     }
-    //static (double lat, double lon, double alt)[] CalculateCorners(double latitude, double longitude, double altitude, double[] quat)
-    //{
-    //    double horizontalFOV = 62.2 * Math.PI / 180;
-    //    double verticalFOV = 48.8 * Math.PI / 180;
-
-    //    // Радиус Земли в метрах (средний радиус)
-    //    double earthRadius = 6371000;
-
-    //    // Вычисление смещений по широте и долготе с учётом радиуса Земли
-    //    double verticalOffset = Math.Tan(verticalFOV / 2) * altitude;  // Смещение по вертикали
-    //    double horizontalOffset = Math.Tan(horizontalFOV / 2) * altitude; // Смещение по горизонтали
-
-    //    // Преобразование смещений в радианы
-    //    double deltaLat = verticalOffset / earthRadius;  // Смещение по широте
-    //    double deltaLon = horizontalOffset / (earthRadius * Math.Cos(latitude * Math.PI / 180));  // Смещение по долготе
-
-    //    var corners = new (double lat, double lon, double alt)[4];
-
-    //    var transformedOffsets = new (double x, double y, double z)[4];
-
-    //    // Применяем кватернион для поворота
-    //    transformedOffsets[0] = ApplyQuaternionToOffset(quat, horizontalOffset, verticalOffset, altitude); // Верхний правый угол
-    //    transformedOffsets[1] = ApplyQuaternionToOffset(quat, -horizontalOffset, verticalOffset, altitude); // Верхний левый угол
-    //    transformedOffsets[2] = ApplyQuaternionToOffset(quat, -horizontalOffset, -verticalOffset, altitude); // Нижний левый угол
-    //    transformedOffsets[3] = ApplyQuaternionToOffset(quat, horizontalOffset, -verticalOffset, altitude); // Нижний правый угол
-
-    //    // Перевод смещений в новые координаты с учётом сферической модели
-    //    for (int i = 0; i < 4; i++)
-    //    {
-    //        corners[i] = (
-    //            latitude + (transformedOffsets[i].y / earthRadius) * (180 / Math.PI), // Преобразование смещения по широте
-    //            longitude + (transformedOffsets[i].x / (earthRadius * Math.Cos(latitude * Math.PI / 180))) * (180 / Math.PI), // Преобразование смещения по долготе
-    //            altitude
-    //        );
-    //    }
-
-    //    return corners;
-    //}
-
-    //static (double x, double y, double z) ApplyQuaternionToOffset(double[] quat, double offsetX, double offsetY, double offsetZ)
-    //{
-    //    double[] vector = [0, offsetX, offsetY, offsetZ];
-
-    //    double qw = quat[0], qx = quat[1], qy = quat[2], qz = quat[3];
-
-    //    // q * v * q^-1
-    //    double[] qConjugate = [qw, -qx, -qy, -qz];
-
-    //    // q * v
-    //    double[] temp = QuaternionMultiply(quat, vector);
-
-    //    // (q * v) * q^-1
-    //    double[] result = QuaternionMultiply(temp, qConjugate);
-
-    //    return (result[1], result[2], result[3]); // Возврат x, y, z
-    //}
-
-    //static double[] QuaternionMultiply(double[] q1, double[] q2)
-    //{
-    //    return new double[]
-    //    {
-    //        q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
-    //        q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
-    //        q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
-    //        q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
-    //    };
-    //}
 }

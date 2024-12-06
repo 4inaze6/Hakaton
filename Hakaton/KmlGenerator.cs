@@ -17,65 +17,50 @@ namespace Hakaton
             XmlElement documentElement = xmlDoc.CreateElement("Document");
             kmlElement.AppendChild(documentElement);
 
-            // Создаем Style для иконки
-            XmlElement styleElement = xmlDoc.CreateElement("Style");
-            styleElement.SetAttribute("id", "polygonStyle");
-            documentElement.AppendChild(styleElement);
+            // Создаем GroundOverlay
+            XmlElement groundOverlayElement = xmlDoc.CreateElement("GroundOverlay");
+            documentElement.AppendChild(groundOverlayElement);
 
-            // Создаем IconStyle для добавления изображения
-            XmlElement iconStyleElement = xmlDoc.CreateElement("IconStyle");
-            styleElement.AppendChild(iconStyleElement);
+            // Добавляем имя
+            XmlElement nameElement = xmlDoc.CreateElement("name");
+            nameElement.InnerText = "Изображение на карте";
+            groundOverlayElement.AppendChild(nameElement);
+
+            // Добавляем описание
+            XmlElement descriptionElement = xmlDoc.CreateElement("description");
+            descriptionElement.InnerText = "Наложение изображения на карту";
+            groundOverlayElement.AppendChild(descriptionElement);
 
             // Добавляем ссылку на изображение
             XmlElement iconElement = xmlDoc.CreateElement("Icon");
-            iconStyleElement.AppendChild(iconElement);
+            groundOverlayElement.AppendChild(iconElement);
+
             XmlElement hrefElement = xmlDoc.CreateElement("href");
             hrefElement.InnerText = imagePath;
             iconElement.AppendChild(hrefElement);
 
-            // Создаем Placemark
-            XmlElement placemarkElement = xmlDoc.CreateElement("Placemark");
-            documentElement.AppendChild(placemarkElement);
+            // Указываем координаты границ
+            XmlElement latLonBoxElement = xmlDoc.CreateElement("LatLonBox");
+            groundOverlayElement.AppendChild(latLonBoxElement);
 
-            // Применяем стиль к полигону
-            XmlElement styleUrlElement = xmlDoc.CreateElement("styleUrl");
-            styleUrlElement.InnerText = "#polygonStyle";
-            placemarkElement.AppendChild(styleUrlElement);
+            XmlElement northElement = xmlDoc.CreateElement("north");
+            northElement.InnerText = northLat.ToString().Replace(',', '.'); // Северная широта
+            latLonBoxElement.AppendChild(northElement);
 
-            // Добавляем описание
-            XmlElement descriptionElement = xmlDoc.CreateElement("description");
-            descriptionElement.InnerText = "Скорректированная область видимости";
-            placemarkElement.AppendChild(descriptionElement);
+            XmlElement southElement = xmlDoc.CreateElement("south");
+            southElement.InnerText = southLat.ToString().Replace(',', '.'); // Южная широта
+            latLonBoxElement.AppendChild(southElement);
 
-            // Создаем элемент Polygon
-            XmlElement polygonElement = xmlDoc.CreateElement("Polygon");
-            placemarkElement.AppendChild(polygonElement);
+            XmlElement eastElement = xmlDoc.CreateElement("east");
+            eastElement.InnerText = eastLon.ToString().Replace(',', '.'); // Восточная долгота
+            latLonBoxElement.AppendChild(eastElement);
 
-            // Создаем outerBoundaryIs
-            XmlElement outerBoundaryIsElement = xmlDoc.CreateElement("outerBoundaryIs");
-            polygonElement.AppendChild(outerBoundaryIsElement);
+            XmlElement westElement = xmlDoc.CreateElement("west");
+            westElement.InnerText = westLon.ToString().Replace(',', '.'); // Западная долгота
+            latLonBoxElement.AppendChild(westElement);
 
-            // Создаем LinearRing
-            XmlElement linearRingElement = xmlDoc.CreateElement("LinearRing");
-            outerBoundaryIsElement.AppendChild(linearRingElement);
-
-            // Создаем элемент coordinates
-            XmlElement coordinatesElement = xmlDoc.CreateElement("coordinates");
-            linearRingElement.AppendChild(coordinatesElement);
-
-            // Формируем координаты для полигона (все координаты в формате lon,lat,0)
-            string coordinatesText = $"{westLon.ToString().Replace(',', '.')},{northLat.ToString().Replace(',', '.')},0 " +
-                                     $"{eastLon.ToString().Replace(',', '.')},{northLat.ToString().Replace(',', '.')},0 " +
-                                     $"{eastLon.ToString().Replace(',', '.')},{southLat.ToString().Replace(',', '.')},0 " +
-                                     $"{westLon.ToString().Replace(',', '.')},{southLat.ToString().Replace(',', '.')},0 " +
-                                     $"{westLon.ToString().Replace(',', '.')},{northLat.ToString().Replace(',', '.')},0";
-            coordinatesElement.InnerText = coordinatesText;
-
-            // Сохраняем файл KML
             string filePath = fileName;
             xmlDoc.Save(filePath);
-
-            Console.WriteLine($"KML файл сохранен по пути: {filePath}");
         }
     }
 
