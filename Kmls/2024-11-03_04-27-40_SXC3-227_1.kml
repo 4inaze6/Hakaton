@@ -1,0 +1,17 @@
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <GroundOverlay>
+      <name>Изображение на карте</name>
+      <description>Наложение изображения на карту</description>
+      <Icon>
+        <href>C:\Users\kvale\source\repos\Hakaton\Telemetry\smartshots_2024-11-03_04-27-50_SXC3-227\2024-11-03_04-27-40_SXC3-227_1.jpg</href>
+      </Icon>
+      <LatLonBox>
+        <north>23.101605976527765</north>
+        <south>27.047323163931253</south>
+        <east>70.18382862211308</east>
+        <west>75.97692401174686</west>
+      </LatLonBox>
+    </GroundOverlay>
+  </Document>
+</kml>

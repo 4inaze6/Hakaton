@@ -1,0 +1,22 @@
+﻿<Window x:Class="GeoPoint.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:GeoPoint"
+        mc:Ignorable="d"
+        Title="GeoPoint" Height="650" Width="1000"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="NoResize">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <Grid.Background>
+            <ImageBrush ImageSource="/GEOPOINT_EARTH.png"/>
+        </Grid.Background>
+        <Button x:Name="EnterButton" Height="75" Width="200" Grid.Row="1" Content="Запуск" Click="EnterButton_Click"/>
+    </Grid>
+</Window>

@@ -17,7 +17,7 @@ public class Program
 
     private static async Task Main(string[] args)
     {
-        string rootPath = @"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Photo_telemetry_hackaton";
+        string rootPath = @"C:\Users\kvale\source\repos\Hakaton\Telemetry";
         string[] imaginePaths = [];
         string logs = "";
         string logFile = "";
@@ -94,13 +94,13 @@ public class Program
                 {
                     Console.WriteLine("Файл не найден.");
                 }
-                string kmlFilePath = @$"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
+                string kmlFilePath = @$"C:\Users\kvale\source\repos\Hakaton\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
                 var geo = CalculateImageAreaFromBeacons(interpolatedBeacon);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, geo[0], geo[1], geo[2], geo[3]);
                 GeoDatum geoDatum = new() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
-                //if (await _service.SearchGeoData(geoDatum))
-                //    await _service.AddGeoData(geoDatum);
+                if (await _service.SearchGeoData(geoDatum))
+                    await _service.AddGeoData(geoDatum);
             }
         }
     }
