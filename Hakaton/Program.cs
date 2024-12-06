@@ -7,7 +7,9 @@ using System.Text.RegularExpressions;
 public class Program
 {
     public static readonly GeoContext _context = new();
-    const double a = 6378137.0; // радиус Земли (метры)
+    double earthRadius = 6371000; // Радиус Земли (м)
+    double degToRad = Math.PI / 180.0;
+    double radToDeg = 180.0 / Math.PI;
     const double f = 1.0 / 298.257223563; // плоская эксцентриситет (WGS84)
     const double e2 = 2 * f - f * f; // эксцентриситет^2
     const double fovHorizontal = 62.2;  // Горизонтальное поле зрения в градусах
@@ -94,9 +96,10 @@ public class Program
                 }
                 string kmlFilePath = @$"C:\Users\kvale\OneDrive\Рабочий стол\САФУ хакатон\САФУ хакатон\Kmls\{Path.GetFileNameWithoutExtension(imaginePath)}.kml";
                 Beacon interpolatedBeacon = Interpolate.InterpolateBeacon(beacons, dateTime);
-                var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
+                var corners = CalculateImageAreaFromBeacons(interpolatedBeacon);
+                //var corners = CalculateCorners(interpolatedBeacon.Latitude, interpolatedBeacon.Longitude, interpolatedBeacon.Altitude, [interpolatedBeacon.EciQuatW, interpolatedBeacon.EciQuatX, interpolatedBeacon.EciQuatY, interpolatedBeacon.EciQuatZ]);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, corners);
-                GeoDatum geoDatum = new GeoDatum() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath};
+                GeoDatum geoDatum = new GeoDatum() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
                 _context.Add(geoDatum);
                 _context.SaveChanges();
             }
@@ -109,63 +112,122 @@ public class Program
         return epoch.AddTicks(ticks);
     }
 
-
-    static (double lat, double lon, double alt)[] CalculateCorners(double latitude, double longitude, double altitude, double[] quat)
+    public static (double lat, double lon, double alt)[] CalculateImageAreaFromBeacons(Beacon beacon)
     {
-        double horizontalFOV = 62.2 * Math.PI / 180;
-        double verticalFOV = 48.8 * Math.PI / 180;
+        // Константы
+        double earthRadius = 6371000; // Радиус Земли (м)
+        double degToRad = Math.PI / 180.0;
+        double radToDeg = 180.0 / Math.PI;
 
-        // Смещения в метрах
-        double[] offsets = new double[]
-        {
-            Math.Tan(horizontalFOV / 2) * altitude, // Смещение по долготе
-            Math.Tan(verticalFOV / 2) * altitude    // Смещение по широте
-        };
+        // Найти центр по широте, долготе и средней высоте
+        double centerLatitude = beacon.Latitude;
+        double centerLongitude = beacon.Longitude;
+        double centerAltitude = beacon.Altitude;
+
+        double tiltAngleDeg = 30; // Угол наклона камеры в градусах
+
+        // Перевод углов в радианы
+        double horizontalFovRad = DegreesToRadians(fovHorizontal);
+        double verticalFovRad = DegreesToRadians(fovHorizontal);
+        double tiltAngleRad = DegreesToRadians(tiltAngleDeg);
+
+        // Вычисление эффективной высоты
+        double effectiveAltitude = centerAltitude * Math.Cos(tiltAngleRad);
+
+        // Вычисление горизонтального и вертикального диапазонов
+        double horizontalRange = 2 * effectiveAltitude * Math.Tan(horizontalFovRad / 2);
+        double verticalRange = 2 * effectiveAltitude * Math.Tan(verticalFovRad / 2);
+
+        // Перевод диапазонов в градусы широты и долготы
+        double latitudeShift = (verticalRange / 2) / earthRadius * (180 / Math.PI);
+        double longitudeShift = (horizontalRange / 2) / (earthRadius * Math.Cos(DegreesToRadians(centerLatitude))) * (180 / Math.PI);
+
+        // Вычисляем координаты углов области видимости
+        double northLatitude = centerLatitude + latitudeShift;
+        double southLatitude = centerLatitude - latitudeShift;
+        double eastLongitude = centerLongitude + longitudeShift;
+        double westLongitude = centerLongitude - longitudeShift;
 
         var corners = new (double lat, double lon, double alt)[4];
 
-        var transformedOffsets = new (double x, double y, double z)[4];
-
-        transformedOffsets[0] = ApplyQuaternionToOffset(quat, offsets[0], offsets[1], altitude); // Угол 1 (вверх-вправо)
-        transformedOffsets[1] = ApplyQuaternionToOffset(quat, -offsets[0], offsets[1], altitude); // Угол 2 (вверх-влево)
-        transformedOffsets[2] = ApplyQuaternionToOffset(quat, -offsets[0], -offsets[1], altitude); // Угол 4 (вниз-влево)
-        transformedOffsets[3] = ApplyQuaternionToOffset(quat, offsets[0], -offsets[1], altitude); // Угол 3 (вниз-вправо)
-
-        // Расчет углов с учетом кватернионов
-        for (int i = 0; i < 4; i++)
-        {
-            corners[i] = (latitude + (transformedOffsets[i].y / 111320), longitude + (transformedOffsets[i].x / (111320 * Math.Cos(latitude * Math.PI / 180))), altitude);
-        }
+        corners[0] = (westLongitude, northLatitude, 0);
+        corners[1] = (eastLongitude, northLatitude, 0);
+        corners[2] = (eastLongitude, southLatitude, 0);
+        corners[3] = (westLongitude, southLatitude, 0);
 
         return corners;
     }
 
-    static (double x, double y, double z) ApplyQuaternionToOffset(double[] quat, double offsetX, double offsetY, double offsetZ)
+    // Метод для перевода градусов в радианы
+    private static double DegreesToRadians(double degrees)
     {
-        double[] vector = [0, offsetX, offsetY, offsetZ];
-
-        double qw = quat[0], qx = quat[1], qy = quat[2], qz = quat[3];
-
-        // q * v * q^-1
-        double[] qConjugate = [qw, -qx, -qy, -qz];
-
-        // q * v
-        double[] temp = QuaternionMultiply(quat, vector);
-
-        // (q * v) * q^-1
-        double[] result = QuaternionMultiply(temp, qConjugate);
-
-        return (result[1], result[2], result[3]); // Возврат x, y, z
+        return degrees * Math.PI / 180;
     }
+    //static (double lat, double lon, double alt)[] CalculateCorners(double latitude, double longitude, double altitude, double[] quat)
+    //{
+    //    double horizontalFOV = 62.2 * Math.PI / 180;
+    //    double verticalFOV = 48.8 * Math.PI / 180;
 
-    static double[] QuaternionMultiply(double[] q1, double[] q2)
-    {
-        return new double[]
-        {
-            q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
-            q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
-            q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
-            q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
-        };
-    }
+    //    // Радиус Земли в метрах (средний радиус)
+    //    double earthRadius = 6371000;
+
+    //    // Вычисление смещений по широте и долготе с учётом радиуса Земли
+    //    double verticalOffset = Math.Tan(verticalFOV / 2) * altitude;  // Смещение по вертикали
+    //    double horizontalOffset = Math.Tan(horizontalFOV / 2) * altitude; // Смещение по горизонтали
+
+    //    // Преобразование смещений в радианы
+    //    double deltaLat = verticalOffset / earthRadius;  // Смещение по широте
+    //    double deltaLon = horizontalOffset / (earthRadius * Math.Cos(latitude * Math.PI / 180));  // Смещение по долготе
+
+    //    var corners = new (double lat, double lon, double alt)[4];
+
+    //    var transformedOffsets = new (double x, double y, double z)[4];
+
+    //    // Применяем кватернион для поворота
+    //    transformedOffsets[0] = ApplyQuaternionToOffset(quat, horizontalOffset, verticalOffset, altitude); // Верхний правый угол
+    //    transformedOffsets[1] = ApplyQuaternionToOffset(quat, -horizontalOffset, verticalOffset, altitude); // Верхний левый угол
+    //    transformedOffsets[2] = ApplyQuaternionToOffset(quat, -horizontalOffset, -verticalOffset, altitude); // Нижний левый угол
+    //    transformedOffsets[3] = ApplyQuaternionToOffset(quat, horizontalOffset, -verticalOffset, altitude); // Нижний правый угол
+
+    //    // Перевод смещений в новые координаты с учётом сферической модели
+    //    for (int i = 0; i < 4; i++)
+    //    {
+    //        corners[i] = (
+    //            latitude + (transformedOffsets[i].y / earthRadius) * (180 / Math.PI), // Преобразование смещения по широте
+    //            longitude + (transformedOffsets[i].x / (earthRadius * Math.Cos(latitude * Math.PI / 180))) * (180 / Math.PI), // Преобразование смещения по долготе
+    //            altitude
+    //        );
+    //    }
+
+    //    return corners;
+    //}
+
+    //static (double x, double y, double z) ApplyQuaternionToOffset(double[] quat, double offsetX, double offsetY, double offsetZ)
+    //{
+    //    double[] vector = [0, offsetX, offsetY, offsetZ];
+
+    //    double qw = quat[0], qx = quat[1], qy = quat[2], qz = quat[3];
+
+    //    // q * v * q^-1
+    //    double[] qConjugate = [qw, -qx, -qy, -qz];
+
+    //    // q * v
+    //    double[] temp = QuaternionMultiply(quat, vector);
+
+    //    // (q * v) * q^-1
+    //    double[] result = QuaternionMultiply(temp, qConjugate);
+
+    //    return (result[1], result[2], result[3]); // Возврат x, y, z
+    //}
+
+    //static double[] QuaternionMultiply(double[] q1, double[] q2)
+    //{
+    //    return new double[]
+    //    {
+    //        q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
+    //        q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
+    //        q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
+    //        q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
+    //    };
+    //}
 }
