@@ -103,6 +103,7 @@ public class Program
                 //    await _service.AddGeoData(geoDatum);
             }
         }
+        Console.WriteLine("Запись данных проведена успешно");
     }
     static DateTime ConvertMicrosecondsToDateTime(long microseconds)
     {
@@ -124,8 +125,7 @@ public class Program
         double centerAltitude = beacon.Altitude;
 
         double tiltAngleDeg = GetTiltAngleDeg(centerLatitude, centerLongitude, centerAltitude, beacon.EciQuatW, beacon.EciQuatX, beacon.EciQuatY, beacon.EciQuatZ); // Угол наклона камеры в градусах
-        Console.WriteLine(tiltAngleDeg);
-
+        
         // Перевод углов в радианы
         double horizontalFovRad = DegreesToRadians(fovHorizontal);
         double verticalFovRad = DegreesToRadians(fovVertical);
