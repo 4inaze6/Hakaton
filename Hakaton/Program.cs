@@ -99,8 +99,8 @@ public class Program
                 var geo = CalculateImageAreaFromBeacons(interpolatedBeacon);
                 KmlGenerator.WriteToKML(kmlFilePath, imaginePath, geo[0], geo[1], geo[2], geo[3]);
                 GeoDatum geoDatum = new() { DateTime = dateTime, ImagePath = imaginePath, KmlData = kmlFilePath };
-                if (await _service.SearchGeoData(geoDatum))
-                    await _service.AddGeoData(geoDatum);
+                //if (await _service.SearchGeoData(geoDatum))
+                //    await _service.AddGeoData(geoDatum);
             }
         }
     }
